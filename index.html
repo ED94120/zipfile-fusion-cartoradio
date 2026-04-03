@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cartoradio – Fusion mesures</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --line: #d9e1ec;
+      --text: #1c2430;
+      --muted: #5d6978;
+      --accent: #1f5fbf;
+      --accent-2: #184a95;
+      --danger: #b42318;
+      --warn: #b54708;
+      --ok: #027a48;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+    }
+
+    .title {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 22px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .row.two {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #b9c6d8;
+      border-radius: 10px;
+      font-size: 15px;
+      background: #fff;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px dashed #9db2cf;
+      border-radius: 10px;
+      background: #f9fbff;
+    }
+
+    .dropzone {
+      border: 2px dashed #9db2cf;
+      border-radius: 12px;
+      padding: 18px;
+      background: #f9fbff;
+      text-align: center;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .dropzone.dragover {
+      background: #eef5ff;
+      border-color: var(--accent);
+    }
+
+    .hint, .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .small { margin-top: 6px; }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover:enabled {
+      background: var(--accent-2);
+    }
+
+    button.secondary {
+      background: #eef3fa;
+      color: var(--text);
+      border: 1px solid #c6d2e3;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .status.ok { background: #eafaf1; color: var(--ok); border: 1px solid #abefc6; }
+    .status.warn { background: #fff6ed; color: var(--warn); border: 1px solid #fedf89; }
+    .status.error { background: #fef3f2; color: var(--danger); border: 1px solid #fecdca; }
+    .status.info { background: #eef5ff; color: var(--accent); border: 1px solid #cfe0ff; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 8px 14px;
+      margin-top: 10px;
+    }
+
+    .kv div:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .mono {
+      font-family: Consolas, Menlo, Monaco, monospace;
+      word-break: break-word;
+    }
+
+    .logs {
+      white-space: pre-wrap;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: Consolas, Menlo, Monaco, monospace;
+      font-size: 13px;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 820px) {
+      .row.two { grid-template-columns: 1fr; }
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>Cartoradio – Fusion mesures</h1>
+      <p class="subtitle">Fusion et contrôle des exports ZIP ANFR. Toutes les données sont traitées localement dans le navigateur.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Entrées</h2>
+        <div class="row two">
+          <div>
+            <label for="zipInput">Fichier ZIP ANFR Cartoradio</label>
+            <div id="dropzone" class="dropzone">
+              <div><strong>Déposer ici le fichier ZIP</strong></div>
+              <div class="small">ou utiliser le sélecteur ci-dessous</div>
+              <div style="margin-top:12px;">
+                <input id="zipInput" type="file" accept=".zip,application/zip" />
+              </div>
+            </div>
+            <div id="zipInfo" class="small">Aucun fichier ZIP chargé.</div>
+
+            <div style="margin-top:16px;">
+              <label for="sampleSelect">Ou charger un exemple ZIP</label>
+              <select id="sampleSelect">
+                <option value="">Choisir un exemple ZIP</option>
+              </select>
+
+              <div class="buttons">
+                <button id="loadSampleBtn" class="secondary" disabled>Charger l’exemple</button>
+                <button id="downloadSampleBtn" class="secondary" disabled>Télécharger l’exemple</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="addressInput">Lieu / adresse</label>
+            <input id="addressInput" type="text" placeholder="Ex. Place du Trocadéro, Paris" />
+            <div class="small">Ce libellé servira à construire le nom du fichier de sortie.</div>
+          </div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <label>Aperçu du nom de sortie</label>
+            <div id="outputPreview" class="mono">—</div>
+          </div>
+          <div>
+            <label>Fichiers détectés</label>
+            <div id="detectedFiles" class="small">Aucune analyse réalisée.</div>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button id="calcBtn" class="primary" disabled>Calculer</button>
+          <button id="clearAddressBtn" class="secondary" disabled>Effacer adresse</button>
+          <button id="clearBtn" class="secondary">Effacer</button>
+          <button id="downloadBtn" class="secondary" disabled>Télécharger le CSV</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Rapport de traitement</h2>
+        <div id="statusBox" class="status info">En attente d’un fichier ZIP et d’une adresse.</div>
+
+        <div class="kv">
+          <div>Fichier global détecté</div><div id="rGlobalFile">—</div>
+          <div>Fichier services détecté</div><div id="rServicesFile">—</div>
+          <div>Encodage utilisé</div><div id="rEncoding">—</div>
+          <div>Mesures fichier global</div><div id="rGlobalCount">—</div>
+          <div>Mesures avec Cas B renseigné</div><div id="rServicesCount">—</div>
+          <div>Mesures indépendantes finales</div><div id="rFinalCount">—</div>
+          <div>Lignes lues fichier global</div><div id="rGlobalRead">—</div>
+          <div>Lignes ignorées fichier global</div><div id="rGlobalIgnored">—</div>
+          <div>Lignes lues fichier services</div><div id="rServicesRead">—</div>
+          <div>Lignes ignorées fichier services</div><div id="rServicesIgnored">—</div>
+          <div>Doublons global identiques</div><div id="rDupGlobalSame">—</div>
+          <div>Doublons global contradictoires</div><div id="rDupGlobalDiff">—</div>
+          <div>Doublons services identiques</div><div id="rDupServicesSame">—</div>
+          <div>Doublons services contradictoires</div><div id="rDupServicesDiff">—</div>
+          <div>Cas B renseignés sans Cas A</div><div id="rServicesSansGlobal">—</div>
+          <div>Cas A sans Cas B renseigné</div><div id="rGlobalSansServices">—</div>
+          <div>Mesures exclues des calculs Cas B</div><div id="rExcludedCasB">—</div>
+          <div>Nom du fichier généré</div><div id="rOutputName" class="mono">—</div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <label>Journal</label>
+          <div id="logs" class="logs">Aucun traitement exécuté.</div>
+        </div>
+
+        <div class="footer-note">Le fichier généré est téléchargé par le navigateur. L’application n’écrit pas directement dans un répertoire du poste.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SAMPLES = [
+      { file: 'EXPORT_CARTORADIO_01-04-2026_17h24m52 - AMIENS.zip', city: 'AMIENS' },
+      { file: 'EXPORT_CARTORADIO_01-04-2026_17h25m27 - TOULOUSE.zip', city: 'TOULOUSE' },
+      { file: 'EXPORT_CARTORADIO_01-04-2026_17h25m36 - DIJON.zip', city: 'DIJON' },
+      { file: 'EXPORT_CARTORADIO_01-04-2026_17h25m48 - RENNES.zip', city: 'RENNES' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_09h52m03 - PARIS.zip', city: 'PARIS' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_09h53m51 - LYON.zip', city: 'LYON' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h00m41 - LILLE.zip', city: 'LILLE' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h01m54 - STRASBOURG.zip', city: 'STRASBOURG' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h11m17 - BORDEAUX.zip', city: 'BORDEAUX' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h12m49 - TOURS.zip', city: 'TOURS' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h14m25 - NANTES.zip', city: 'NANTES' },
+      { file: 'EXPORT_CARTORADIO_27-03-2026_10h16m21 - LIMOGES.zip', city: 'LIMOGES' }
+    ];
+
+    const state = {
+      zipFile: null,
+      generatedBlob: null,
+      generatedFilename: '',
+      report: null,
+      detectedGlobalName: '',
+      detectedServicesName: '',
+      selectedSample: null
+    };
+
+    const el = {
+      zipInput: document.getElementById('zipInput'),
+      addressInput: document.getElementById('addressInput'),
+      calcBtn: document.getElementById('calcBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      clearAddressBtn: document.getElementById('clearAddressBtn'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      zipInfo: document.getElementById('zipInfo'),
+      outputPreview: document.getElementById('outputPreview'),
+      detectedFiles: document.getElementById('detectedFiles'),
+      dropzone: document.getElementById('dropzone'),
+      statusBox: document.getElementById('statusBox'),
+      logs: document.getElementById('logs'),
+      sampleSelect: document.getElementById('sampleSelect'),
+      loadSampleBtn: document.getElementById('loadSampleBtn'),
+      downloadSampleBtn: document.getElementById('downloadSampleBtn'),
+      rGlobalFile: document.getElementById('rGlobalFile'),
+      rServicesFile: document.getElementById('rServicesFile'),
+      rEncoding: document.getElementById('rEncoding'),
+      rGlobalCount: document.getElementById('rGlobalCount'),
+      rServicesCount: document.getElementById('rServicesCount'),
+      rFinalCount: document.getElementById('rFinalCount'),
+      rGlobalRead: document.getElementById('rGlobalRead'),
+      rGlobalIgnored: document.getElementById('rGlobalIgnored'),
+      rServicesRead: document.getElementById('rServicesRead'),
+      rServicesIgnored: document.getElementById('rServicesIgnored'),
+      rDupGlobalSame: document.getElementById('rDupGlobalSame'),
+      rDupGlobalDiff: document.getElementById('rDupGlobalDiff'),
+      rDupServicesSame: document.getElementById('rDupServicesSame'),
+      rDupServicesDiff: document.getElementById('rDupServicesDiff'),
+      rServicesSansGlobal: document.getElementById('rServicesSansGlobal'),
+      rGlobalSansServices: document.getElementById('rGlobalSansServices'),
+      rExcludedCasB: document.getElementById('rExcludedCasB'),
+      rOutputName: document.getElementById('rOutputName')
+    };
+
+    const DATE_SEUIL_TM_ANCIEN_REGIME = '2014-01-01';
+
+    function pad2(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function nowParts() {
+      const d = new Date();
+      return {
+        yyyy: d.getFullYear(),
+        mm: pad2(d.getMonth() + 1),
+        dd: pad2(d.getDate()),
+        hh: pad2(d.getHours()),
+        mi: pad2(d.getMinutes())
+      };
+    }
+
+    function sanitizeFilenamePart(txt) {
+      let s = (txt || '').trim();
+      s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      s = s.replace(/[\\/:*?"<>|]/g, ' ');
+      s = s.replace(/[;,]+/g, ' ');
+      s = s.replace(/\s+/g, '_');
+      s = s.replace(/_+/g, '_');
+      s = s.replace(/^_+|_+$/g, '');
+      return s;
+    }
+
+    function buildOutputFilename(address, count) {
+      const p = nowParts();
+      const place = sanitizeFilenamePart(address) || 'Export';
+      const n = Number.isFinite(count) && count >= 0 ? 'N' + String(count) : 'Nxxx';
+      return `${place}_${n}_${p.yyyy}-${p.mm}-${p.dd}_${p.hh}h${p.mi}.csv`;
+    }
+
+    function initSamples() {
+      el.sampleSelect.innerHTML = '<option value="">Choisir un exemple ZIP</option>';
+
+      SAMPLES.forEach((sample, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = sample.file;
+        el.sampleSelect.appendChild(option);
+      });
+    }
+
+    function getSelectedSample() {
+      const idx = el.sampleSelect.value;
+      if (idx === '') return null;
+      return SAMPLES[Number(idx)] || null;
+    }
+
+    function updateSampleButtons() {
+      const hasSample = !!getSelectedSample();
+      el.loadSampleBtn.disabled = !hasSample;
+      el.downloadSampleBtn.disabled = !hasSample;
+    }
+
+    function updateButtons() {
+      const hasZip = !!state.zipFile;
+      const hasAddress = el.addressInput.value.trim() !== '';
+      el.calcBtn.disabled = !(hasZip && hasAddress);
+      el.clearAddressBtn.disabled = !hasAddress;
+      el.downloadBtn.disabled = !state.generatedBlob;
+      updateSampleButtons();
+    }
+
+    function updatePreview() {
+      const count = state.report ? state.report.nbMesuresUnion : null;
+      el.outputPreview.textContent = buildOutputFilename(el.addressInput.value, count);
+      updateButtons();
+    }
+
+    function setStatus(kind, text) {
+      el.statusBox.className = 'status ' + kind;
+      el.statusBox.textContent = text;
+    }
+
+    function resetReportFields() {
+      [
+        'rGlobalFile', 'rServicesFile', 'rEncoding', 'rGlobalCount', 'rServicesCount', 'rFinalCount',
+        'rGlobalRead', 'rGlobalIgnored', 'rServicesRead', 'rServicesIgnored', 'rDupGlobalSame',
+        'rDupGlobalDiff', 'rDupServicesSame', 'rDupServicesDiff', 'rServicesSansGlobal',
+        'rGlobalSansServices', 'rExcludedCasB', 'rOutputName'
+      ].forEach(k => el[k].textContent = '—');
+      el.logs.textContent = 'Aucun traitement exécuté.';
+    }
+
+    function clearAll() {
+      state.zipFile = null;
+      state.generatedBlob = null;
+      state.generatedFilename = '';
+      state.report = null;
+      state.detectedGlobalName = '';
+      state.detectedServicesName = '';
+      state.selectedSample = null;
+      el.zipInput.value = '';
+      el.sampleSelect.value = '';
+      el.addressInput.value = '';
+      el.zipInfo.textContent = 'Aucun fichier ZIP chargé.';
+      el.detectedFiles.textContent = 'Aucune analyse réalisée.';
+      resetReportFields();
+      setStatus('info', 'En attente d’un fichier ZIP et d’une adresse.');
+      updatePreview();
+    }
+
+    function clearAddress() {
+      el.addressInput.value = '';
+      state.generatedBlob = null;
+      state.generatedFilename = '';
+      el.rOutputName.textContent = '—';
+      updatePreview();
+    }
+
+    function setZipFile(file, options = {}) {
+      state.zipFile = file;
+      state.generatedBlob = null;
+      state.generatedFilename = '';
+      state.report = null;
+      state.detectedGlobalName = '';
+      state.detectedServicesName = '';
+
+      if (!options.keepSampleSelection) {
+        state.selectedSample = null;
+        el.sampleSelect.value = '';
+      }
+
+      el.zipInfo.textContent = `ZIP chargé : ${file.name} (${formatBytes(file.size)})`;
+      el.detectedFiles.textContent = 'ZIP chargé. Analyse à lancer avec le bouton Calculer.';
+      resetReportFields();
+      setStatus('info', 'ZIP chargé. Saisir l’adresse puis lancer le calcul.');
+      updatePreview();
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '—';
+      if (bytes < 1024) return `${bytes} octets`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} Mo`;
+    }
+
+    function appendLog(lines) {
+      el.logs.textContent = Array.isArray(lines) ? lines.join('\n') : String(lines || '');
+    }
+
+    function normalizeColumnName(s) {
+      return replaceAccents((s || '').trim().toLowerCase())
+        .replace(/[ _\-'."()]/g, '');
+    }
+
+    function replaceAccents(s) {
+      return s
+        .replace(/[éèêë]/g, 'e')
+        .replace(/[àâä]/g, 'a')
+        .replace(/[ùûü]/g, 'u')
+        .replace(/[îï]/g, 'i')
+        .replace(/[ôö]/g, 'o')
+        .replace(/ç/g, 'c');
+    }
+
+    function csvQuote(s) {
+      return '"' + String(s ?? '').replace(/"/g, '""') + '"';
+    }
+
+    function cleanField(s) {
+      let v = String(s ?? '').trim();
+      if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+        v = v.slice(1, -1);
+      }
+      return v.replace(/""/g, '"');
+    }
+
+    function parseCsvLine(line, delimiter = ';') {
+      const out = [];
+      let cur = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delimiter && !inQuotes) {
+          out.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
+
+    function parseCsvText(text, delimiter = ';') {
+      const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+      const rows = [];
+      let row = [];
+      let cur = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < normalized.length; i++) {
+        const ch = normalized[i];
+
+        if (ch === '"') {
+          if (inQuotes && normalized[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delimiter && !inQuotes) {
+          row.push(cur);
+          cur = '';
+        } else if (ch === '\n' && !inQuotes) {
+          row.push(cur);
+          if (row.some(cell => String(cell).trim() !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+
+      row.push(cur);
+      if (row.some(cell => String(cell).trim() !== '')) {
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function normalizeMeasureId(s) {
+      return String(s ?? '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u00A0/g, ' ')
+        .trim()
+        .replace(/^"(.*)"$/, '$1')
+        .trim();
+    }
+
+    function tryDecodeCp1252(bytes) {
+      try {
+        return new TextDecoder('windows-1252').decode(bytes);
+      } catch (_) {
+        return new TextDecoder('iso-8859-1').decode(bytes);
+      }
+    }
+
+    function findHeaderIndex(headers, acceptedNames) {
+      for (let i = 0; i < headers.length; i++) {
+        if (acceptedNames.includes(normalizeColumnName(cleanField(headers[i])))) return i;
+      }
+      return -1;
+    }
+
+    function isMobileService(serviceName) {
+      return String(serviceName || '').trim().toUpperCase().startsWith('TM');
+    }
+
+    function frequencyTM(serviceName) {
+      const match = String(serviceName || '').match(/(\d+)/);
+      return match ? Number(match[1]) : 0;
+    }
+
+    function serializeArray(arr) {
+      return arr.map(v => String(v ?? '')).join(String.fromCharCode(30));
+    }
+
+    function tryParseNumber(s) {
+      let txt = String(s ?? '').trim();
+      if (!txt) return { ok: false, value: 0 };
+      txt = txt.replace(/"/g, '').replace(/ /g, '').replace(/\u00A0/g, '');
+      txt = txt.replace(/V\/m/gi, '').replace(/V\\m/gi, '');
+
+      const hasComma = txt.includes(',');
+      const hasDot = txt.includes('.');
+
+      if (hasComma && hasDot) {
+        txt = txt.replace(/\./g, '');
+        txt = txt.replace(/,/g, '.');
+      } else if (hasComma) {
+        txt = txt.replace(/,/g, '.');
+      }
+
+      const value = Number(txt);
+      return Number.isFinite(value) ? { ok: true, value } : { ok: false, value: 0 };
+    }
+
+    function parseFrenchDate(value) {
+      const txt = String(value ?? '').trim();
+      if (!txt) return { ok: false, iso: '', day: 0, month: 0, year: 0 };
+
+      const m = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!m) return { ok: false, iso: '', day: 0, month: 0, year: 0 };
+
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      const year = Number(m[3]);
+
+      if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) {
+        return { ok: false, iso: '', day: 0, month: 0, year: 0 };
+      }
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        return { ok: false, iso: '', day: 0, month: 0, year: 0 };
+      }
+
+      const d = new Date(year, month - 1, day);
+      if (
+        d.getFullYear() !== year ||
+        d.getMonth() !== month - 1 ||
+        d.getDate() !== day
+      ) {
+        return { ok: false, iso: '', day: 0, month: 0, year: 0 };
+      }
+
+      const iso = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      return { ok: true, iso, day, month, year };
+    }
+
+    function isDateBeforeThreshold(dateInfo, thresholdIso = DATE_SEUIL_TM_ANCIEN_REGIME) {
+      return !!(dateInfo && dateInfo.ok && dateInfo.iso < thresholdIso);
+    }
+
+    function numberToFrenchPlain(value, decimals = 3) {
+      if (value === '' || value === null || value === undefined) return '';
+      if (!Number.isFinite(Number(value))) return String(value);
+
+      let s = Number(value).toFixed(decimals).replace('.', ',');
+
+      while (s.endsWith('0')) s = s.slice(0, -1);
+      if (s.endsWith(',')) s = s.slice(0, -1);
+
+      if (s === '-0') s = '0';
+
+      return s;
+    }
+
+    function formatFieldForCsv(v) {
+      if (v === null || v === undefined) return '';
+
+      let s = String(v).trim();
+      if (s === '') return '';
+
+      s = s.replace(/"/g, '');
+      s = s.replace(/\u00A0/g, ' ');
+      s = s.replace(/\s+/g, ' ').trim();
+      s = s.replace(/V\/m/gi, '').replace(/V\\m/gi, '').trim();
+
+      if (s === '') return '';
+
+      const numericLike = /^-?\d+(?:[.,]\d+)?$/;
+
+      if (!numericLike.test(s)) {
+        return s;
+      }
+
+      s = s.replace('.', ',');
+
+      if (s.includes(',')) {
+        let [ent, dec] = s.split(',');
+
+        dec = dec.replace(/0+$/, '');
+
+        s = dec === '' ? ent : `${ent},${dec}`;
+      }
+
+      if (s === '-0') s = '0';
+      if (s === '-0,0') s = '0';
+
+      return s;
+    }
+
+    function integrateServiceValues(dMeasure, serviceName, levelMeasured, levelExtra, counters) {
+      const keyMes = serviceName + '|MES';
+      const keyExt = serviceName + '|EXT';
+      const isTM = isMobileService(serviceName);
+
+      if (!dMeasure.has(keyMes)) {
+        dMeasure.set(keyMes, levelMeasured);
+        if (isTM) dMeasure.set(keyExt, levelExtra);
+        return;
+      }
+
+      const oldMes = String(dMeasure.get(keyMes) ?? '');
+      const oldExt = isTM ? String(dMeasure.get(keyExt) ?? '') : '';
+
+      if (oldMes === levelMeasured) {
+        if (isTM) {
+          if (oldExt === levelExtra) {
+            counters.same++;
+            return;
+          }
+        } else {
+          counters.same++;
+          return;
+        }
+      }
+
+      if (oldMes === '' && levelMeasured !== '') {
+        dMeasure.set(keyMes, levelMeasured);
+        if (isTM) {
+          if (oldExt === '' && levelExtra !== '') {
+            dMeasure.set(keyExt, levelExtra);
+          } else if (oldExt !== '' && levelExtra !== '' && oldExt !== levelExtra) {
+            counters.diff++;
+          }
+        }
+        return;
+      }
+
+      if (isTM && oldExt === '' && levelExtra !== '' && oldMes === levelMeasured) {
+        dMeasure.set(keyExt, levelExtra);
+        return;
+      }
+
+      if (oldMes !== levelMeasured) {
+        if (oldMes !== '' && levelMeasured !== '') {
+          counters.diff++;
+          return;
+        }
+      }
+
+      if (isTM && oldExt !== levelExtra) {
+        if (oldExt !== '' && levelExtra !== '') {
+          counters.diff++;
+          return;
+        }
+      }
+
+      if (oldMes === '' && levelMeasured !== '') dMeasure.set(keyMes, levelMeasured);
+      if (isTM && oldExt === '' && levelExtra !== '') dMeasure.set(keyExt, levelExtra);
+    }
+
+    function computeCumulCasB(dMeasure, nonTM, tm, tmSource = 'MES') {
+      let sumSq = 0;
+      let count = 0;
+
+      for (const svc of nonTM) {
+        const n = tryParseNumber(dMeasure.get(svc + '|MES') || '');
+        if (n.ok) { sumSq += n.value * n.value; count++; }
+      }
+
+      for (const svc of tm) {
+        const n = tryParseNumber(dMeasure.get(svc + '|' + tmSource) || '');
+        if (n.ok) { sumSq += n.value * n.value; count++; }
+      }
+
+      return count === 0 ? '' : Math.sqrt(sumSq);
+    }
+
+    function computeCumulCasBTM(dMeasure, tm, tmSource = 'MES') {
+      let sumSq = 0;
+      let count = 0;
+
+      for (const svc of tm) {
+        const n = tryParseNumber(dMeasure.get(svc + '|' + tmSource) || '');
+        if (n.ok) { sumSq += n.value * n.value; count++; }
+      }
+
+      return count === 0 ? '' : Math.sqrt(sumSq);
+    }
+
+    function computeCvServicesCasB(dMeasure, nonTM, tm, tmSource = 'MES') {
+      const values = [];
+
+      for (const svc of nonTM) {
+        const n = tryParseNumber(dMeasure.get(svc + '|MES') || '');
+        if (n.ok) values.push(n.value);
+      }
+
+      for (const svc of tm) {
+        const n = tryParseNumber(dMeasure.get(svc + '|' + tmSource) || '');
+        if (n.ok) values.push(n.value);
+      }
+
+      if (values.length === 0) return '';
+
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      if (mean === 0) return '';
+
+      const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length;
+      const sigma = Math.sqrt(variance);
+
+      return sigma / mean;
+    }
+
+    function isNumericFormatAllowed(s) {
+      let txt = String(s ?? '').trim();
+      if (txt === '') return true;
+      txt = txt.replace(/\u00A0/g, '').replace(/ /g, '');
+      if (/e/i.test(txt)) return false;
+      if (txt.includes('.')) return false;
+      if (txt.includes('-') && !txt.startsWith('-')) return false;
+      const matches = txt.match(/,/g);
+      if (matches && matches.length > 1) return false;
+      for (let i = 0; i < txt.length; i++) {
+        const ch = txt[i];
+        if ((ch >= '0' && ch <= '9') || ch === ',' || ch === '-') continue;
+        return false;
+      }
+      return txt !== ',' && txt !== '-,';
+    }
+
+    function buildSampleUrl(sample) {
+      return `samples/${encodeURIComponent(sample.file)}`;
+    }
+
+    async function fetchSampleFile(sample) {
+      const url = buildSampleUrl(sample);
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Impossible de charger l'exemple : ${sample.file}`);
+      }
+
+      const blob = await response.blob();
+      return new File([blob], sample.file, {
+        type: 'application/zip',
+        lastModified: Date.now()
+      });
+    }
+
+    async function processZip(file, address) {
+      const logs = [];
+      const zip = await JSZip.loadAsync(file);
+      const entries = Object.values(zip.files).filter(f => !f.dir);
+      logs.push(`ZIP ouvert : ${file.name}`);
+      logs.push(`Nombre de fichiers dans le ZIP : ${entries.length}`);
+
+      const csvEntries = entries.filter(f => f.name.toLowerCase().endsWith('.csv'));
+      if (csvEntries.length === 0) {
+        throw new Error('Aucun fichier CSV trouvé dans le ZIP.');
+      }
+
+      logs.push('CSV trouvés :');
+      csvEntries.forEach(f => logs.push('  - ' + f.name));
+
+      const analyses = [];
+      for (const entry of csvEntries) {
+        const bytes = await entry.async('uint8array');
+        const text = tryDecodeCp1252(bytes);
+        const rows = parseCsvText(text);
+        if (rows.length === 0) continue;
+        const headers = rows[0].map(cleanField);
+        const idxNum = findHeaderIndex(headers, ['numerodemesure', 'numeromesure', 'nmesure']);
+        const idxNiveauGlobal = findHeaderIndex(headers, ['niveauglobal']);
+        const idxService = findHeaderIndex(headers, ['service']);
+        const idxNiveauMes = findHeaderIndex(headers, ['niveaumesure']);
+        const idxNiveauExtra = findHeaderIndex(headers, ['niveauextrapole']);
+
+        analyses.push({
+          entry,
+          bytes,
+          text,
+          rows,
+          headers,
+          isGlobal: idxNum >= 0 && idxNiveauGlobal >= 0,
+          isServices: idxNum >= 0 && idxService >= 0 && idxNiveauMes >= 0
+        });
+      }
+
+      let globalCandidate = analyses.find(a => /mesures_globales_cartoradio\.csv$/i.test(a.entry.name))
+        || analyses.find(a => /mesures_globales/i.test(a.entry.name) && a.isGlobal)
+        || analyses.find(a => a.isGlobal);
+
+      let servicesCandidate = analyses.find(a => /mesures_par_service_cartoradio\.csv$/i.test(a.entry.name))
+        || analyses.find(a => /mesures_par_service/i.test(a.entry.name) && a.isServices)
+        || analyses.find(a => a.isServices);
+
+      if (!globalCandidate) throw new Error('Impossible de trouver le fichier global dans le ZIP.');
+      if (!servicesCandidate) throw new Error('Impossible de trouver le fichier services dans le ZIP.');
+      if (globalCandidate.entry.name === servicesCandidate.entry.name) {
+        throw new Error('Le même fichier ne peut pas servir de fichier global et de fichier services.');
+      }
+
+      state.detectedGlobalName = globalCandidate.entry.name;
+      state.detectedServicesName = servicesCandidate.entry.name;
+      logs.push(`Fichier global retenu : ${globalCandidate.entry.name}`);
+      logs.push(`Fichier services retenu : ${servicesCandidate.entry.name}`);
+
+      const report = {
+        encoding: 'windows-1252',
+        globalFile: globalCandidate.entry.name,
+        servicesFile: servicesCandidate.entry.name,
+        nbMesuresGlobal: 0,
+        nbMesuresServices: 0,
+        nbMesuresUnion: 0,
+        nbLignesGlobalLues: 0,
+        nbLignesGlobalIgnorees: 0,
+        nbLignesServicesLues: 0,
+        nbLignesServicesIgnorees: 0,
+        nbDoublonsGlobalIdentiques: 0,
+        nbDoublonsGlobalContradictoires: 0,
+        nbDoublonsServicesIdentiques: 0,
+        nbDoublonsServicesContradictoires: 0,
+        nbServicesSansGlobal: 0,
+        nbGlobalSansServices: 0,
+        nbMesuresExcluesCalculCasB: 0,
+        nbMesuresAncienRegimeTM: 0,
+        numericErrors: [],
+        logs
+      };
+
+      const globalRows = globalCandidate.rows;
+      const servicesRows = servicesCandidate.rows;
+      if (globalRows.length === 0) throw new Error('Le fichier global est vide.');
+      if (servicesRows.length === 0) throw new Error('Le fichier services est vide.');
+
+      const globalHeadersRaw = globalRows[0].map(cleanField);
+      const idxMesureGlobal = findHeaderIndex(globalHeadersRaw, ['numerodemesure', 'numeromesure', 'nmesure']);
+      const idxCasA = findHeaderIndex(globalHeadersRaw, ['niveauglobal']);
+      const idxDateMesure = findHeaderIndex(globalHeadersRaw, ['datedemesure']);
+      if (idxMesureGlobal < 0) throw new Error("Impossible de trouver la colonne 'Numéro de mesure' dans le fichier global.");
+      if (idxCasA < 0) throw new Error("Impossible de trouver la colonne 'Niveau global' dans le fichier global.");
+
+      const globalHeadersOut = [];
+      for (let i = 0; i < globalHeadersRaw.length; i++) {
+        if (i !== idxMesureGlobal) globalHeadersOut.push(globalHeadersRaw[i]);
+      }
+
+      const globalData = new Map();
+      const globalSerialized = new Map();
+      const serviceData = new Map();
+      const services = new Map();
+      const ordreServices = [];
+      const allMeasures = new Map();
+      const measuresWithRealCasB = new Set();
+      const measureDates = new Map();
+
+      for (let r = 1; r < globalRows.length; r++) {
+        const line = globalRows[r];
+        if (line.length !== globalHeadersRaw.length) {
+          report.nbLignesGlobalIgnorees++;
+          logs.push(`Ligne globale ignorée (colonnes inattendues) : ${r + 1} / ${line.length} au lieu de ${globalHeadersRaw.length}`);
+          continue;
+        }
+        if (line.join('').trim() === '') continue;
+        report.nbLignesGlobalLues++;
+        const mesureNum = normalizeMeasureId(line[idxMesureGlobal] ?? '');
+        const dateMesureRaw = idxDateMesure >= 0 ? cleanField(line[idxDateMesure] ?? '') : '';
+        if (mesureNum === '') {
+          report.nbLignesGlobalIgnorees++;
+          continue;
+        }
+
+        const arrGlobal = [];
+        for (let i = 0; i < globalHeadersRaw.length; i++) {
+          if (i !== idxMesureGlobal) arrGlobal.push(cleanField(line[i] ?? ''));
+        }
+        const ser = serializeArray(arrGlobal);
+        if (!globalData.has(mesureNum)) {
+          globalData.set(mesureNum, arrGlobal);
+          globalSerialized.set(mesureNum, ser);
+          allMeasures.set(mesureNum, true);
+          measureDates.set(mesureNum, dateMesureRaw);
+        } else if (globalSerialized.get(mesureNum) === ser) {
+          report.nbDoublonsGlobalIdentiques++;
+        } else {
+          report.nbDoublonsGlobalContradictoires++;
+        }
+
+        if (measureDates.has(mesureNum)) {
+          const oldDate = String(measureDates.get(mesureNum) ?? '');
+          if (oldDate === '' && dateMesureRaw !== '') {
+            measureDates.set(mesureNum, dateMesureRaw);
+          } else if (oldDate !== '' && dateMesureRaw !== '' && oldDate !== dateMesureRaw) {
+            logs.push(`Dates différentes pour la mesure ${mesureNum} : [${oldDate}] / [${dateMesureRaw}]`);
+          }
+        } else {
+          measureDates.set(mesureNum, dateMesureRaw);
+        }
+      }
+
+      const servicesHeaders = servicesRows[0].map(cleanField);
+      const idxMesureServices = findHeaderIndex(servicesHeaders, ['numerodemesure', 'numeromesure', 'nmesure']);
+      const idxService = findHeaderIndex(servicesHeaders, ['service']);
+      const idxNiveauMesure = findHeaderIndex(servicesHeaders, ['niveaumesure']);
+      const idxNiveauExtra = findHeaderIndex(servicesHeaders, ['niveauextrapole']);
+      if (idxMesureServices < 0) throw new Error("Impossible de trouver la colonne 'Numéro de mesure' dans le fichier services.");
+      if (idxService < 0) throw new Error("Impossible de trouver la colonne 'Service' dans le fichier services.");
+      if (idxNiveauMesure < 0) throw new Error("Impossible de trouver la colonne 'Niveau mesuré' dans le fichier services.");
+
+      for (let r = 1; r < servicesRows.length; r++) {
+        const line = servicesRows[r];
+        if (line.length !== servicesHeaders.length) {
+          report.nbLignesServicesIgnorees++;
+          logs.push(`Ligne services ignorée (colonnes inattendues) : ${r + 1} / ${line.length} au lieu de ${servicesHeaders.length}`);
+          continue;
+        }
+
+        if (line.join('').trim() === '') continue;
+        report.nbLignesServicesLues++;
+        const mesureNum = normalizeMeasureId(line[idxMesureServices] ?? '');
+        const serviceNom = cleanField(line[idxService] ?? '');
+        const niveauMesure = cleanField(line[idxNiveauMesure] ?? '');
+        const niveauExtra = idxNiveauExtra >= 0 ? cleanField(line[idxNiveauExtra] ?? '') : '';
+        const hasCasBValue = niveauMesure !== '' || niveauExtra !== '';
+
+        if (mesureNum === '' || serviceNom === '') {
+          report.nbLignesServicesIgnorees++;
+          continue;
+        }
+
+        if (!services.has(serviceNom)) {
+          services.set(serviceNom, true);
+          ordreServices.push(serviceNom);
+        }
+
+        allMeasures.set(mesureNum, true);
+
+        if (hasCasBValue) {
+          measuresWithRealCasB.add(mesureNum);
+
+          if (!serviceData.has(mesureNum)) {
+            serviceData.set(mesureNum, new Map());
+          }
+
+          integrateServiceValues(serviceData.get(mesureNum), serviceNom, niveauMesure, niveauExtra, {
+            get same() { return report.nbDoublonsServicesIdentiques; },
+            set same(v) { report.nbDoublonsServicesIdentiques = v; },
+            get diff() { return report.nbDoublonsServicesContradictoires; },
+            set diff(v) { report.nbDoublonsServicesContradictoires = v; }
+          });
+        }
+      }
+
+      report.nbMesuresGlobal = globalData.size;
+      report.nbMesuresServices = measuresWithRealCasB.size;
+      report.nbMesuresUnion = allMeasures.size;
+
+      for (const key of serviceData.keys()) {
+        if (!globalData.has(key)) report.nbServicesSansGlobal++;
+      }
+      for (const key of globalData.keys()) {
+        if (!measuresWithRealCasB.has(key)) report.nbGlobalSansServices++;
+      }
+
+      const tabNonTM = ordreServices.filter(s => !isMobileService(s));
+      const tabTM = ordreServices.filter(s => isMobileService(s)).sort((a, b) => {
+        const fa = frequencyTM(a);
+        const fb = frequencyTM(b);
+        if (fa !== fb) return fa - fb;
+        return a.localeCompare(b, 'fr', { sensitivity: 'base' });
+      });
+
+      const outputHeaders = ['Numéro de mesure', ...globalHeadersOut];
+      for (const s of tabNonTM) outputHeaders.push(s);
+      for (const s of tabTM) {
+        outputHeaders.push(`${s}_mesuré`);
+        outputHeaders.push(`${s}_extrapolé`);
+      }
+      outputHeaders.push('Cumul_CasB', 'Cumul_CasB_TM', 'Ratio_Ecart_CasA_CasB_%', 'CV_services_CasB');
+
+      const globalCasAOutIndex = idxCasA < idxMesureGlobal ? idxCasA : idxCasA - 1;
+      const csvLines = [outputHeaders.map(csvQuote).join(';')];
+
+      for (const mesure of allMeasures.keys()) {
+        const row = [csvQuote(mesure)];
+        const arrGlobal = globalData.get(mesure) || [];
+
+        for (let i = 0; i < globalHeadersOut.length; i++) {
+          row.push(csvQuote(formatFieldForCsv(arrGlobal[i] ?? '')));
+        }
+
+        const dMesure = serviceData.get(mesure) || new Map();
+
+        for (const s of tabNonTM) {
+          row.push(csvQuote(formatFieldForCsv(dMesure.get(s + '|MES') || '')));
+        }
+        for (const s of tabTM) {
+          row.push(csvQuote(formatFieldForCsv(dMesure.get(s + '|MES') || '')));
+          row.push(csvQuote(formatFieldForCsv(dMesure.get(s + '|EXT') || '')));
+        }
+
+        const dateInfo = parseFrenchDate(measureDates.get(mesure) || '');
+
+        let tmMeasuredAllEmpty = true;
+        let tmExtraAny = false;
+
+        for (const s of tabTM) {
+          const vMes = cleanField(dMesure.get(s + '|MES') || '');
+          const vExt = cleanField(dMesure.get(s + '|EXT') || '');
+
+          if (vMes !== '') tmMeasuredAllEmpty = false;
+          if (vExt !== '') tmExtraAny = true;
+        }
+
+        const isOldTmRegime =
+          tabTM.length > 0 &&
+          tmMeasuredAllEmpty &&
+          tmExtraAny &&
+          isDateBeforeThreshold(dateInfo);
+
+        const isExcludedCasB =
+          tabTM.length > 0 &&
+          tmMeasuredAllEmpty &&
+          tmExtraAny &&
+          !isOldTmRegime;
+
+        let cumulCasB = '';
+        let cumulCasBTM = '';
+        let cvServicesCasB = '';
+        let ratio = '';
+
+        if (isOldTmRegime) {
+          report.nbMesuresAncienRegimeTM++;
+          cumulCasB = computeCumulCasB(dMesure, tabNonTM, tabTM, 'EXT');
+          cumulCasBTM = computeCumulCasBTM(dMesure, tabTM, 'EXT');
+          cvServicesCasB = computeCvServicesCasB(dMesure, tabNonTM, tabTM, 'EXT');
+        } else if (isExcludedCasB) {
+          report.nbMesuresExcluesCalculCasB++;
+        } else {
+          cumulCasB = computeCumulCasB(dMesure, tabNonTM, tabTM, 'MES');
+          cumulCasBTM = computeCumulCasBTM(dMesure, tabTM, 'MES');
+          cvServicesCasB = computeCvServicesCasB(dMesure, tabNonTM, tabTM, 'MES');
+
+          const casAStr = arrGlobal[globalCasAOutIndex] ?? '';
+          const casA = tryParseNumber(casAStr);
+          const casB = tryParseNumber(String(cumulCasB));
+          if (casA.ok && casA.value !== 0 && casB.ok) {
+            ratio = 100 * (casA.value - casB.value) / casA.value;
+          }
+        }
+
+        if (isOldTmRegime) {
+          const casAStr = arrGlobal[globalCasAOutIndex] ?? '';
+          const casA = tryParseNumber(casAStr);
+          const casB = tryParseNumber(String(cumulCasB));
+          if (casA.ok && casA.value !== 0 && casB.ok) {
+            ratio = 100 * (casA.value - casB.value) / casA.value;
+          }
+        }
+
+        row.push(csvQuote(numberToFrenchPlain(cumulCasB, 6)));
+        row.push(csvQuote(numberToFrenchPlain(cumulCasBTM, 6)));
+        row.push(csvQuote(numberToFrenchPlain(ratio, 3)));
+        row.push(csvQuote(numberToFrenchPlain(cvServicesCasB, 6)));
+
+        csvLines.push(row.join(';'));
+      }
+
+      const numericHeaders = new Set();
+      tabNonTM.forEach(h => numericHeaders.add(h));
+      tabTM.forEach(h => {
+        numericHeaders.add(`${h}_mesuré`);
+        numericHeaders.add(`${h}_extrapolé`);
+      });
+      numericHeaders.add('Cumul_CasB');
+      numericHeaders.add('Cumul_CasB_TM');
+      numericHeaders.add('Ratio_Ecart_CasA_CasB_%');
+      numericHeaders.add('CV_services_CasB');
+
+      const outputRows = csvLines.map(line => parseCsvLine(line, ';').map(cleanField));
+      const outHeaders = outputRows[0];
+      for (let c = 0; c < outHeaders.length; c++) {
+        if (!numericHeaders.has(outHeaders[c])) continue;
+        for (let r = 1; r < outputRows.length; r++) {
+          const val = outputRows[r][c] ?? '';
+          if (val !== '' && !isNumericFormatAllowed(val)) {
+            report.numericErrors.push({ column: outHeaders[c], row: r + 1, value: val });
+            if (report.numericErrors.length >= 30) break;
+          }
+        }
+        if (report.numericErrors.length >= 30) break;
+      }
+
+      if (report.numericErrors.length > 0) {
+        logs.push('Erreurs de format numérique détectées :');
+        report.numericErrors.forEach(e => logs.push(`  - Colonne ${e.column}, ligne ${e.row}, valeur = [${e.value}]`));
+      } else {
+        logs.push('Contrôle numérique : OK');
+      }
+
+      logs.push(`Mesures traitées en ancien régime TM : ${report.nbMesuresAncienRegimeTM}`);
+      logs.push(`Mesures exclues des calculs Cas B : ${report.nbMesuresExcluesCalculCasB}`);
+
+      const csvText = csvLines.join('\r\n');
+      const utf8Bom = '\uFEFF';
+      const blob = new Blob([utf8Bom, csvText], { type: 'text/csv;charset=utf-8' });
+      const filename = buildOutputFilename(address, report.nbMesuresUnion);
+
+      return { blob, filename, report };
+    }
+
+    function renderReport(report, filename) {
+      el.rGlobalFile.textContent = report.globalFile || '—';
+      el.rServicesFile.textContent = report.servicesFile || '—';
+      el.rEncoding.textContent = report.encoding || '—';
+      el.rGlobalCount.textContent = String(report.nbMesuresGlobal);
+      el.rServicesCount.textContent = String(report.nbMesuresServices);
+      el.rFinalCount.textContent = String(report.nbMesuresUnion);
+      el.rGlobalRead.textContent = String(report.nbLignesGlobalLues);
+      el.rGlobalIgnored.textContent = String(report.nbLignesGlobalIgnorees);
+      el.rServicesRead.textContent = String(report.nbLignesServicesLues);
+      el.rServicesIgnored.textContent = String(report.nbLignesServicesIgnorees);
+      el.rDupGlobalSame.textContent = String(report.nbDoublonsGlobalIdentiques);
+      el.rDupGlobalDiff.textContent = String(report.nbDoublonsGlobalContradictoires);
+      el.rDupServicesSame.textContent = String(report.nbDoublonsServicesIdentiques);
+      el.rDupServicesDiff.textContent = String(report.nbDoublonsServicesContradictoires);
+      el.rServicesSansGlobal.textContent = String(report.nbServicesSansGlobal);
+      el.rGlobalSansServices.textContent = String(report.nbGlobalSansServices);
+      el.rExcludedCasB.textContent = String(report.nbMesuresExcluesCalculCasB);
+      el.rOutputName.textContent = filename || '—';
+      appendLog(report.logs);
+
+      const hasWarnings = (
+        report.nbLignesGlobalIgnorees > 0 ||
+        report.nbLignesServicesIgnorees > 0 ||
+        report.nbDoublonsGlobalIdentiques > 0 ||
+        report.nbDoublonsGlobalContradictoires > 0 ||
+        report.nbDoublonsServicesIdentiques > 0 ||
+        report.nbDoublonsServicesContradictoires > 0 ||
+        report.nbServicesSansGlobal > 0 ||
+        report.nbGlobalSansServices > 0 ||
+        report.nbMesuresExcluesCalculCasB > 0 ||
+        report.numericErrors.length > 0
+      );
+
+      if (hasWarnings) {
+        setStatus('warn', 'Traitement terminé avec avertissements.');
+      } else {
+        setStatus('ok', 'Traitement terminé avec succès.');
+      }
+
+      el.detectedFiles.innerHTML =
+        `<div>Global : <span class="mono">${report.globalFile}</span></div>` +
+        `<div>Services : <span class="mono">${report.servicesFile}</span></div>`;
+    }
+
+    function downloadGenerated() {
+      if (!state.generatedBlob) return;
+      const url = URL.createObjectURL(state.generatedBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = state.generatedFilename || 'export.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function handleCalculate() {
+      try {
+        if (!state.zipFile) {
+          setStatus('error', 'Aucun fichier ZIP chargé.');
+          return;
+        }
+        const address = el.addressInput.value.trim();
+        if (!address) {
+          setStatus('error', 'L’adresse est obligatoire.');
+          return;
+        }
+
+        setStatus('info', 'Traitement en cours...');
+        appendLog('Traitement en cours...');
+        el.downloadBtn.disabled = true;
+
+        const result = await processZip(state.zipFile, address);
+        state.generatedBlob = result.blob;
+        state.generatedFilename = result.filename;
+        state.report = result.report;
+        renderReport(result.report, result.filename);
+        updatePreview();
+        updateButtons();
+      } catch (err) {
+        state.generatedBlob = null;
+        state.generatedFilename = '';
+        state.report = null;
+        el.downloadBtn.disabled = true;
+        setStatus('error', err && err.message ? err.message : 'Erreur inattendue pendant le traitement.');
+        appendLog(String(err && err.stack ? err.stack : err));
+      }
+    }
+
+    async function handleLoadSample() {
+      try {
+        const sample = getSelectedSample();
+        if (!sample) {
+          setStatus('error', 'Aucun exemple ZIP sélectionné.');
+          return;
+        }
+
+        state.selectedSample = sample;
+        setStatus('info', 'Chargement de l’exemple...');
+        appendLog(`Chargement de l'exemple : ${sample.file}`);
+        el.loadSampleBtn.disabled = true;
+        el.downloadSampleBtn.disabled = true;
+        el.calcBtn.disabled = true;
+
+        const file = await fetchSampleFile(sample);
+
+        setZipFile(file, { keepSampleSelection: true });
+        el.addressInput.value = sample.city;
+        updatePreview();
+
+        await handleCalculate();
+        updateButtons();
+      } catch (err) {
+        setStatus('error', err && err.message ? err.message : 'Erreur pendant le chargement de l’exemple.');
+        appendLog(String(err && err.stack ? err.stack : err));
+        updateButtons();
+      }
+    }
+
+    function handleDownloadSample() {
+      const sample = getSelectedSample();
+      if (!sample) {
+        setStatus('error', 'Aucun exemple ZIP sélectionné.');
+        return;
+      }
+
+      const a = document.createElement('a');
+      a.href = buildSampleUrl(sample);
+      a.download = sample.file;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    el.zipInput.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (file) setZipFile(file);
+    });
+
+    el.sampleSelect.addEventListener('change', () => {
+      state.selectedSample = getSelectedSample();
+      updateButtons();
+    });
+
+    el.addressInput.addEventListener('input', updatePreview);
+    el.calcBtn.addEventListener('click', handleCalculate);
+    el.clearBtn.addEventListener('click', clearAll);
+    el.clearAddressBtn.addEventListener('click', clearAddress);
+    el.downloadBtn.addEventListener('click', downloadGenerated);
+    el.loadSampleBtn.addEventListener('click', handleLoadSample);
+    el.downloadSampleBtn.addEventListener('click', handleDownloadSample);
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      el.dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      el.dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.dropzone.classList.remove('dragover');
+      });
+    });
+
+    el.dropzone.addEventListener('drop', e => {
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) {
+        el.zipInput.files = e.dataTransfer.files;
+        setZipFile(file);
+      }
+    });
+
+    initSamples();
+    clearAll();
+  </script>
+</body>
+</html>
