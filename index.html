@@ -442,7 +442,15 @@
 
     function updatePreview() {
       const count = state.report ? state.report.nbMesuresUnion : null;
-      el.outputPreview.textContent = buildOutputFilename(el.addressInput.value, count);
+      const previewName = buildOutputFilename(el.addressInput.value, count);
+    
+      el.outputPreview.textContent = previewName;
+    
+      if (state.generatedBlob && state.report) {
+        state.generatedFilename = previewName;
+        el.rOutputName.textContent = previewName;
+      }
+    
       updateButtons();
     }
 
